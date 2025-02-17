@@ -40,7 +40,7 @@
     </style>
 </head>
 <body>
-    <div id="loading">Загрузка платежной формы...</div>
+    <div id="loading">Проверка платежа...</div>
     <div id="error"></div>
     <script>
         let tg = window.Telegram.WebApp;
@@ -49,23 +49,25 @@
             document.getElementById('error').style.display = 'block';
             document.getElementById('error').innerText = message;
             document.getElementById('loading').style.display = 'none';
+            // Закрываем веб-приложение через 3 секунды
+            setTimeout(() => tg.close(), 3000);
         }
 
-        async function checkPaymentValidity(paymentData) {
+        async function checkPaymentValidity(paymentId) {
             try {
-                // Проверяем время создания платежа
-                const paymentId = paymentData.invoiceId;
-                const timestamp = parseInt(paymentId.split('_').pop());
-                const now = Math.floor(Date.now() / 1000);
+                const response = await fetch('/api/check-payment-validity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ payment_id: paymentId })
+                });
                 
-                // Если прошло больше 10 минут (600 секунд)
-                if (now - timestamp > 600) {
-                    throw new Error('Время действия ссылки истекло. Пожалуйста, создайте новый платеж.');
-                }
-                
-                return true;
+                const data = await response.json();
+                return data.valid;
             } catch (e) {
-                throw new Error('Ссылка недействительна. Пожалуйста, создайте новый платеж.');
+                console.error('Error checking payment validity:', e);
+                return false;
             }
         }
 
@@ -74,7 +76,6 @@
                 tg.expand();
                 tg.ready();
 
-                const widget = new cp.CloudPayments();
                 const params = new URLSearchParams(window.location.search);
                 const encodedData = params.get('data');
                 
@@ -84,32 +85,32 @@
 
                 const paymentData = JSON.parse(atob(encodedData));
                 
-                // Проверяем валидность платежа
-                await checkPaymentValidity(paymentData);
+                // Проверяем валидность платежа перед показом формы оплаты
+                const isValid = await checkPaymentValidity(paymentData.invoiceId);
+                
+                if (!isValid) {
+                    throw new Error('Время действия платежа истекло. Пожалуйста, создайте новый платеж.');
+                }
 
+                const widget = new cp.CloudPayments();
                 widget.pay('charge', paymentData, {
                     onSuccess: function (options) {
-                        console.log('Payment success:', options);
                         tg.close();
                     },
                     onFail: function (reason, options) {
-                        console.log('Payment failed:', reason);
                         showError(reason || 'Ошибка оплаты');
                     },
                     onComplete: function (paymentResult, options) {
-                        console.log('Payment complete:', paymentResult);
                         if (paymentResult.success) {
                             tg.close();
                         }
                     }
                 });
             } catch (e) {
-                console.error('Payment initialization error:', e);
                 showError(e.message);
             }
         }
 
-        // Запускаем инициализацию после полной загрузки страницы
         document.addEventListener('DOMContentLoaded', initPayment);
     </script>
 </body>
