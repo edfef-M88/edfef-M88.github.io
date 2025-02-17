@@ -96,7 +96,7 @@
                     onFail: function (reason, options) {
                         // Если пользователь отменил платеж
                         if (reason === 'User has cancelled') {
-                            document.getElementById('message').innerText = 'Платеж был отменен';
+                            document.getElementById('message').innerText = 'Упс.. Вы закрыли платежную форму';
                             document.getElementById('refreshButton').style.display = 'block';
                         } else {
                             showError(reason || 'Ошибка оплаты');
