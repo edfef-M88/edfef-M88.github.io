@@ -29,24 +29,45 @@
             border-radius: 8px;
             max-width: 80%;
         }
+        .button {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: none;
+        }
+        .message {
+            text-align: center;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
     <div id="error"></div>
+    <div id="message" class="message"></div>
+    <button id="refreshButton" class="button" onclick="window.location.reload()">Обновить страницу</button>
     <script>
         const tg = window.Telegram.WebApp;
         
-        function showError(message) {
+        function showError(message, showRefresh = true) {
             document.getElementById('error').style.display = 'block';
             document.getElementById('error').innerText = message;
-            setTimeout(() => tg.close(), 3000);
+            if (showRefresh) {
+                document.getElementById('refreshButton').style.display = 'block';
+            } else {
+                setTimeout(() => tg.close(), 3000);
+            }
         }
 
         function checkPaymentValidity(paymentData) {
             const timestamp = parseInt(paymentData.invoiceId.split('_').pop());
             const now = Math.floor(Date.now() / 1000);
             
-            if (now - timestamp > 15) { // 10 минут
+            if (now - timestamp > 600) { // 10 минут
                 throw new Error('Время действия платежа истекло. Пожалуйста, создайте новый платеж.');
             }
             return true;
@@ -73,7 +94,13 @@
                         tg.close();
                     },
                     onFail: function (reason, options) {
-                        showError(reason || 'Ошибка оплаты');
+                        // Если пользователь отменил платеж
+                        if (reason === 'User has cancelled') {
+                            document.getElementById('message').innerText = 'Платеж был отменен';
+                            document.getElementById('refreshButton').style.display = 'block';
+                        } else {
+                            showError(reason || 'Ошибка оплаты');
+                        }
                     },
                     onComplete: function (paymentResult, options) {
                         if (paymentResult.success) {
@@ -83,7 +110,7 @@
                 });
             }
         } catch (e) {
-            showError(e.message);
+            showError(e.message, false);
         }
     </script>
 </body>
