@@ -2,40 +2,89 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Перенаправление...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no, viewport-fit=cover">
+    <title>Оплата</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
+    <style>
+        body {
+            color: var(--tg-theme-text-color, #000);
+            background: var(--tg-theme-bg-color, #fff);
+            margin: 0;
+            padding: 20px;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        #error {
+            color: red;
+            text-align: center;
+            display: none;
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid red;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="error"></div>
     <script>
+        const tg = window.Telegram.WebApp;
+        
+        function showError(message) {
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').innerText = message;
+            setTimeout(() => tg.close(), 3000);
+        }
+
         function checkPaymentValidity(paymentData) {
             const timestamp = parseInt(paymentData.invoiceId.split('_').pop());
             const now = Math.floor(Date.now() / 1000);
-            return now - timestamp <= 15; // 10 минут
+            
+            if (now - timestamp > 600) { // 10 минут
+                throw new Error('Время действия платежа истекло. Пожалуйста, создайте новый платеж.');
+            }
+            return true;
         }
 
         try {
+            tg.expand();
+            tg.ready();
+
             const params = new URLSearchParams(window.location.search);
-            const data = params.get('data');
+            const encodedData = params.get('data');
             
-            if (!data) {
-                window.location.href = 'expired.html';
-                return;
+            if (!encodedData) {
+                throw new Error('Отсутствуют данные для оплаты');
             }
 
-            const paymentData = JSON.parse(atob(data));
+            const paymentData = JSON.parse(atob(encodedData));
             
-            if (!checkPaymentValidity(paymentData)) {
-                window.location.href = 'expired.html';
-                return;
+            // Проверяем валидность платежа
+            if (checkPaymentValidity(paymentData)) {
+                const widget = new cp.CloudPayments();
+                widget.pay('charge', paymentData, {
+                    onSuccess: function (options) {
+                        tg.close();
+                    },
+                    onFail: function (reason, options) {
+                        showError(reason || 'Ошибка оплаты');
+                    },
+                    onComplete: function (paymentResult, options) {
+                        if (paymentResult.success) {
+                            tg.close();
+                        }
+                    }
+                });
             }
-
-            window.location.href = `payment.html?data=${data}`;
         } catch (e) {
-            window.location.href = 'expired.html';
+            showError(e.message);
         }
     </script>
-</head>
-<body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-        <p>Проверка платежа...</p>
-    </div>
 </body>
 </html>
