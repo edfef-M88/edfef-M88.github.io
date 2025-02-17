@@ -17,46 +17,80 @@
             margin: 0;
             padding: 20px;
             font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
         #error {
             color: red;
             text-align: center;
             display: none;
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid red;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        #loading {
+            text-align: center;
+            margin: 20px;
         }
     </style>
 </head>
 <body>
+    <div id="loading">Загрузка платежной формы...</div>
     <div id="error"></div>
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
-
-        const widget = new cp.CloudPayments();
-        const params = new URLSearchParams(window.location.search);
-        const encodedData = params.get('data');
+        let tg = window.Telegram.WebApp;
         
-        try {
-            const paymentData = JSON.parse(atob(encodedData));
-            
-            widget.pay('charge', paymentData, {
-                onSuccess: function (options) {
-                    tg.close();
-                },
-                onFail: function (reason, options) {
-                    document.getElementById('error').style.display = 'block';
-                    document.getElementById('error').innerText = reason;
-                },
-                onComplete: function (paymentResult, options) {
-                    if (paymentResult.success) {
-                        tg.close();
-                    }
-                }
-            });
-        } catch (e) {
+        function showError(message) {
             document.getElementById('error').style.display = 'block';
-            document.getElementById('error').innerText = e.message;
+            document.getElementById('error').innerText = message;
+            document.getElementById('loading').style.display = 'none';
         }
+
+        function initPayment() {
+            try {
+                tg.expand();
+                tg.ready();
+
+                const widget = new cp.CloudPayments();
+                const params = new URLSearchParams(window.location.search);
+                const encodedData = params.get('data');
+                
+                if (!encodedData) {
+                    throw new Error('Отсутствуют данные для оплаты');
+                }
+
+                const paymentData = JSON.parse(atob(encodedData));
+                console.log('Payment data:', paymentData); // Для отладки
+
+                widget.pay('charge', paymentData, {
+                    onSuccess: function (options) {
+                        console.log('Payment success:', options);
+                        tg.close();
+                    },
+                    onFail: function (reason, options) {
+                        console.log('Payment failed:', reason);
+                        showError(reason || 'Ошибка оплаты');
+                    },
+                    onComplete: function (paymentResult, options) {
+                        console.log('Payment complete:', paymentResult);
+                        if (paymentResult.success) {
+                            tg.close();
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Payment initialization error:', e);
+                showError('Ошибка инициализации платежа: ' + e.message);
+            }
+        }
+
+        // Запускаем инициализацию после полной загрузки страницы
+        document.addEventListener('DOMContentLoaded', initPayment);
     </script>
 </body>
 </html>
