@@ -3,10 +3,6 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no, viewport-fit=cover">
-    <meta name="format-detection" content="telephone=no">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="MobileOptimized" content="176">
-    <meta name="HandheldFriendly" content="True">
     <title>Оплата</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
@@ -31,16 +27,10 @@
             padding: 10px;
             border: 1px solid red;
             border-radius: 8px;
-            max-width: 80%;
-        }
-        #loading {
-            text-align: center;
-            margin: 20px;
         }
     </style>
 </head>
 <body>
-    <div id="loading">Проверка платежа...</div>
     <div id="error"></div>
     <script>
         let tg = window.Telegram.WebApp;
@@ -48,50 +38,36 @@
         function showError(message) {
             document.getElementById('error').style.display = 'block';
             document.getElementById('error').innerText = message;
-            document.getElementById('loading').style.display = 'none';
-            // Закрываем веб-приложение через 3 секунды
             setTimeout(() => tg.close(), 3000);
         }
 
-        async function checkPaymentValidity(paymentId) {
-            try {
-                const response = await fetch('/api/check-payment-validity', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ payment_id: paymentId })
-                });
-                
-                const data = await response.json();
-                return data.valid;
-            } catch (e) {
-                console.error('Error checking payment validity:', e);
-                return false;
+        function checkPaymentValidity(paymentData) {
+            // Получаем timestamp из payment_id
+            const timestamp = parseInt(paymentData.invoiceId.split('_').pop());
+            const now = Math.floor(Date.now() / 1000);
+            
+            // Если прошло больше 10 минут (600 секунд)
+            if (now - timestamp > 600) {
+                throw new Error('Время действия платежа истекло. Пожалуйста, создайте новый платеж.');
             }
+            return true;
         }
 
-        async function initPayment() {
-            try {
-                tg.expand();
-                tg.ready();
+        try {
+            tg.expand();
+            tg.ready();
 
-                const params = new URLSearchParams(window.location.search);
-                const encodedData = params.get('data');
-                
-                if (!encodedData) {
-                    throw new Error('Отсутствуют данные для оплаты');
-                }
+            const params = new URLSearchParams(window.location.search);
+            const encodedData = params.get('data');
+            
+            if (!encodedData) {
+                throw new Error('Отсутствуют данные для оплаты');
+            }
 
-                const paymentData = JSON.parse(atob(encodedData));
-                
-                // Проверяем валидность платежа перед показом формы оплаты
-                const isValid = await checkPaymentValidity(paymentData.invoiceId);
-                
-                if (!isValid) {
-                    throw new Error('Время действия платежа истекло. Пожалуйста, создайте новый платеж.');
-                }
-
+            const paymentData = JSON.parse(atob(encodedData));
+            
+            // Проверяем валидность платежа
+            if (checkPaymentValidity(paymentData)) {
                 const widget = new cp.CloudPayments();
                 widget.pay('charge', paymentData, {
                     onSuccess: function (options) {
@@ -106,12 +82,10 @@
                         }
                     }
                 });
-            } catch (e) {
-                showError(e.message);
             }
+        } catch (e) {
+            showError(e.message);
         }
-
-        document.addEventListener('DOMContentLoaded', initPayment);
     </script>
 </body>
 </html>
