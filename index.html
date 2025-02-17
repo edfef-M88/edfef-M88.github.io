@@ -5,22 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Перенаправление...</title>
     <script>
-        // Получаем параметры URL
-        const params = new URLSearchParams(window.location.search);
-        const data = params.get('data');
-        
-        if (data) {
-            // Если есть параметр data, перенаправляем на страницу оплаты
+        function checkPaymentValidity(paymentData) {
+            const timestamp = parseInt(paymentData.invoiceId.split('_').pop());
+            const now = Math.floor(Date.now() / 1000);
+            return now - timestamp <= 600; // 10 минут
+        }
+
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const data = params.get('data');
+            
+            if (!data) {
+                window.location.href = 'expired.html';
+                return;
+            }
+
+            const paymentData = JSON.parse(atob(data));
+            
+            if (!checkPaymentValidity(paymentData)) {
+                window.location.href = 'expired.html';
+                return;
+            }
+
             window.location.href = `payment.html?data=${data}`;
-        } else {
-            // Если параметра нет, перенаправляем на страницу с ошибкой
+        } catch (e) {
             window.location.href = 'expired.html';
         }
     </script>
 </head>
 <body>
     <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-        <p>Перенаправление...</p>
+        <p>Проверка платежа...</p>
     </div>
 </body>
 </html>
