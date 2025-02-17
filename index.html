@@ -28,6 +28,10 @@
             text-align: center;
             padding: 20px;
         }
+        .payment-methods {
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -61,11 +65,57 @@
                         },
                         onFail: function (reason, options) {
                             console.log('Payment failed:', reason);
-                            tg.close();
+                            document.getElementById('error').style.display = 'block';
+                            document.getElementById('error').innerText = 'Ошибка оплаты: ' + reason;
                         },
                         onComplete: function (paymentResult, options) {
                             console.log('Payment completed:', paymentResult);
-                            tg.close();
+                            if (paymentResult.success) {
+                                tg.close();
+                            }
+                        },
+                        // Обработчики для разных методов оплаты
+                        onPaymentMethodCreate: function (result, options) {
+                            console.log('Payment method created:', result);
+                        },
+                        onPaymentMethodSelect: function (method) {
+                            console.log('Payment method selected:', method);
+                        },
+                        // СБП
+                        onSBPInit: function (qrUrl) {
+                            console.log('SBP QR URL:', qrUrl);
+                        },
+                        onSBPFail: function (reason) {
+                            console.log('SBP failed:', reason);
+                        },
+                        // Tinkoff Pay
+                        onTinkoffPayInit: function (url) {
+                            console.log('TinkoffPay URL:', url);
+                        },
+                        // Yandex Pay
+                        onYandexPayInit: function (url) {
+                            console.log('YandexPay URL:', url);
+                        },
+                        // SberPay
+                        onSberPayInit: function (url) {
+                            console.log('SberPay URL:', url);
+                        },
+                        // MIR Pay
+                        onMirPayInit: function (url) {
+                            console.log('MIR Pay URL:', url);
+                        },
+                        // QIWI
+                        onQiwiInit: function (url) {
+                            console.log('QIWI URL:', url);
+                        },
+                        // Общие обработчики
+                        onError: function (error) {
+                            console.error('Payment error:', error);
+                            document.getElementById('error').style.display = 'block';
+                            document.getElementById('error').innerText = 'Ошибка: ' + error.message;
+                        },
+                        onReady: function () {
+                            document.getElementById('loading').style.display = 'none';
                         }
                     });
                 } catch (e) {
