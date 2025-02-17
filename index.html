@@ -7,7 +7,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="MobileOptimized" content="176">
     <meta name="HandheldFriendly" content="True">
-    <meta name="robots" content="noindex,nofollow">
     <title>Оплата</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
@@ -19,122 +18,45 @@
             padding: 20px;
             font-family: sans-serif;
         }
-        .error {
+        #error {
             color: red;
-            padding: 20px;
             text-align: center;
-        }
-        #loading {
-            text-align: center;
-            padding: 20px;
-        }
-        .payment-methods {
-            margin-top: 20px;
-            text-align: center;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div id="loading">Загрузка платежной формы...</div>
-    <div id="error" class="error" style="display:none;"></div>
-    <script type="text/javascript">
-        try {
-            // Инициализация Telegram WebApp
-            const tg = window.Telegram.WebApp;
-            tg.expand();
-            tg.ready();
+    <div id="error"></div>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
 
-            const widget = new cp.CloudPayments();
-            const params = new URLSearchParams(window.location.search);
-            const encodedData = params.get('data');
-            
-            if (!encodedData) {
-                throw new Error('Отсутствуют данные платежа');
-            }
-            
-            // Декодируем данные из base64
+        const widget = new cp.CloudPayments();
+        const params = new URLSearchParams(window.location.search);
+        const encodedData = params.get('data');
+        
+        try {
             const paymentData = JSON.parse(atob(encodedData));
-            console.log('Payment Data:', paymentData);
             
-            function pay() {
-                try {
-                    widget.pay('charge', paymentData, {
-                        onSuccess: function (options) {
-                            console.log('Payment success:', options);
-                            tg.close();
-                        },
-                        onFail: function (reason, options) {
-                            console.log('Payment failed:', reason);
-                            document.getElementById('error').style.display = 'block';
-                            document.getElementById('error').innerText = 'Ошибка оплаты: ' + reason;
-                        },
-                        onComplete: function (paymentResult, options) {
-                            console.log('Payment completed:', paymentResult);
-                            if (paymentResult.success) {
-                                tg.close();
-                            }
-                        },
-                        // Обработчики для разных методов оплаты
-                        onPaymentMethodCreate: function (result, options) {
-                            console.log('Payment method created:', result);
-                        },
-                        onPaymentMethodSelect: function (method) {
-                            console.log('Payment method selected:', method);
-                        },
-                        // СБП
-                        onSBPInit: function (qrUrl) {
-                            console.log('SBP QR URL:', qrUrl);
-                        },
-                        onSBPFail: function (reason) {
-                            console.log('SBP failed:', reason);
-                        },
-                        // Tinkoff Pay
-                        onTinkoffPayInit: function (url) {
-                            console.log('TinkoffPay URL:', url);
-                        },
-                        // Yandex Pay
-                        onYandexPayInit: function (url) {
-                            console.log('YandexPay URL:', url);
-                        },
-                        // SberPay
-                        onSberPayInit: function (url) {
-                            console.log('SberPay URL:', url);
-                        },
-                        // MIR Pay
-                        onMirPayInit: function (url) {
-                            console.log('MIR Pay URL:', url);
-                        },
-                        // QIWI
-                        onQiwiInit: function (url) {
-                            console.log('QIWI URL:', url);
-                        },
-                        // Общие обработчики
-                        onError: function (error) {
-                            console.error('Payment error:', error);
-                            document.getElementById('error').style.display = 'block';
-                            document.getElementById('error').innerText = 'Ошибка: ' + error.message;
-                        },
-                        onReady: function () {
-                            document.getElementById('loading').style.display = 'none';
-                        }
-                    });
-                } catch (e) {
-                    document.getElementById('loading').style.display = 'none';
+            widget.pay('charge', paymentData, {
+                onSuccess: function (options) {
+                    tg.close();
+                },
+                onFail: function (reason, options) {
                     document.getElementById('error').style.display = 'block';
-                    document.getElementById('error').innerText = 'Ошибка при инициализации платежа: ' + e.message;
-                    console.error('Payment initialization error:', e);
+                    document.getElementById('error').innerText = reason;
+                },
+                onComplete: function (paymentResult, options) {
+                    if (paymentResult.success) {
+                        tg.close();
+                    }
                 }
-            }
-            
-            // Запускаем оплату с небольшой задержкой
-            setTimeout(pay, 1000);
-            
+            });
         } catch (e) {
-            document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'block';
-            document.getElementById('error').innerText = 'Ошибка при загрузке: ' + e.message;
-            console.error('Loading error:', e);
+            document.getElementById('error').innerText = e.message;
         }
     </script>
 </body>
-</html> 
+</html>
