@@ -51,7 +51,25 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        function initPayment() {
+        async function checkPaymentValidity(paymentData) {
+            try {
+                // Проверяем время создания платежа
+                const paymentId = paymentData.invoiceId;
+                const timestamp = parseInt(paymentId.split('_').pop());
+                const now = Math.floor(Date.now() / 1000);
+                
+                // Если прошло больше 10 минут (600 секунд)
+                if (now - timestamp > 600) {
+                    throw new Error('Время действия ссылки истекло. Пожалуйста, создайте новый платеж.');
+                }
+                
+                return true;
+            } catch (e) {
+                throw new Error('Ссылка недействительна. Пожалуйста, создайте новый платеж.');
+            }
+        }
+
+        async function initPayment() {
             try {
                 tg.expand();
                 tg.ready();
@@ -65,7 +83,9 @@
                 }
 
                 const paymentData = JSON.parse(atob(encodedData));
-                console.log('Payment data:', paymentData); // Для отладки
+                
+                // Проверяем валидность платежа
+                await checkPaymentValidity(paymentData);
 
                 widget.pay('charge', paymentData, {
                     onSuccess: function (options) {
@@ -85,7 +105,7 @@
                 });
             } catch (e) {
                 console.error('Payment initialization error:', e);
-                showError('Ошибка инициализации платежа: ' + e.message);
+                showError(e.message);
             }
         }
 
