@@ -6,28 +6,62 @@
     <title>Оплата</title>
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        .error {
+            color: red;
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <div>Загрузка платежной формы...</div>
+    <div id="loading">Загрузка платежной формы...</div>
+    <div id="error" class="error" style="display:none;"></div>
     <script type="text/javascript">
-        const widget = new cp.CloudPayments();
-        const params = new URLSearchParams(window.location.search);
-        const paymentData = JSON.parse(decodeURIComponent(params.get('data')));
-        
-        function pay() {
-            widget.pay('charge', paymentData, {
-                onSuccess: function (options) {
-                    window.Telegram.WebApp.close();
-                },
-                onFail: function (reason, options) {
-                    window.Telegram.WebApp.close();
-                },
-                onComplete: function (paymentResult, options) {
-                    window.Telegram.WebApp.close();
+        try {
+            const widget = new cp.CloudPayments();
+            const params = new URLSearchParams(window.location.search);
+            const encodedData = params.get('data');
+            
+            if (!encodedData) {
+                throw new Error('Отсутствуют данные платежа');
+            }
+            
+            const paymentData = JSON.parse(decodeURIComponent(encodedData));
+            console.log('Payment Data:', paymentData); // Для отладки
+            
+            function pay() {
+                try {
+                    widget.pay('charge', paymentData, {
+                        onSuccess: function (options) {
+                            window.Telegram.WebApp.close();
+                        },
+                        onFail: function (reason, options) {
+                            console.log('Payment failed:', reason); // Для отладки
+                            window.Telegram.WebApp.close();
+                        },
+                        onComplete: function (paymentResult, options) {
+                            console.log('Payment completed:', paymentResult); // Для отладки
+                            window.Telegram.WebApp.close();
+                        }
+                    });
+                } catch (e) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').innerText = 'Ошибка при инициализации платежа: ' + e.message;
+                    console.error('Payment initialization error:', e); // Для отладки
                 }
-            });
+            }
+            
+            // Запускаем оплату с небольшой задержкой
+            setTimeout(pay, 1000);
+            
+        } catch (e) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').innerText = 'Ошибка при загрузке: ' + e.message;
+            console.error('Loading error:', e); // Для отладки
         }
-        setTimeout(pay, 1000);
     </script>
 </body>
 </html> 
