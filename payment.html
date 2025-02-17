@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Оплата</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
+</head>
+<body>
+    <script>
+        const tg = window.Telegram.WebApp;
+        
+        function checkPaymentValidity(paymentData) {
+            const timestamp = parseInt(paymentData.invoiceId.split('_').pop());
+            const now = Math.floor(Date.now() / 1000);
+            return now - timestamp <= 600; // 10 минут
+        }
+
+        function initPayment() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const encodedData = params.get('data');
+                
+                if (!encodedData) {
+                    window.location.href = 'expired.html';
+                    return;
+                }
+
+                const paymentData = JSON.parse(atob(encodedData));
+                
+                if (!checkPaymentValidity(paymentData)) {
+                    window.location.href = 'expired.html';
+                    return;
+                }
+
+                const widget = new cp.CloudPayments();
+                widget.pay('charge', paymentData, {
+                    onSuccess: function (options) {
+                        tg.close();
+                    },
+                    onFail: function (reason, options) {
+                        window.location.href = 'expired.html';
+                    },
+                    onComplete: function (paymentResult, options) {
+                        if (paymentResult.success) {
+                            tg.close();
+                        }
+                    }
+                });
+            } catch (e) {
+                window.location.href = 'expired.html';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initPayment);
+    </script>
+</body>
+</html>
