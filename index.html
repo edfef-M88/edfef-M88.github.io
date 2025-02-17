@@ -2,90 +2,25 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no, viewport-fit=cover">
-    <title>Оплата</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
-    <style>
-        body {
-            color: var(--tg-theme-text-color, #000);
-            background: var(--tg-theme-bg-color, #fff);
-            margin: 0;
-            padding: 20px;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        #error {
-            color: red;
-            text-align: center;
-            display: none;
-            margin: 20px;
-            padding: 10px;
-            border: 1px solid red;
-            border-radius: 8px;
-        }
-    </style>
-</head>
-<body>
-    <div id="error"></div>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Перенаправление...</title>
     <script>
-        let tg = window.Telegram.WebApp;
+        // Получаем параметры URL
+        const params = new URLSearchParams(window.location.search);
+        const data = params.get('data');
         
-        function showError(message) {
-            document.getElementById('error').style.display = 'block';
-            document.getElementById('error').innerText = message;
-            setTimeout(() => tg.close(), 3000);
-        }
-
-        function checkPaymentValidity(paymentData) {
-            // Получаем timestamp из payment_id
-            const timestamp = parseInt(paymentData.invoiceId.split('_').pop());
-            const now = Math.floor(Date.now() / 1000);
-            
-            // Если прошло больше 10 минут (600 секунд)
-            if (now - timestamp > 600) {
-                throw new Error('Время действия платежа истекло. Пожалуйста, создайте новый платеж.');
-            }
-            return true;
-        }
-
-        try {
-            tg.expand();
-            tg.ready();
-
-            const params = new URLSearchParams(window.location.search);
-            const encodedData = params.get('data');
-            
-            if (!encodedData) {
-                throw new Error('Отсутствуют данные для оплаты');
-            }
-
-            const paymentData = JSON.parse(atob(encodedData));
-            
-            // Проверяем валидность платежа
-            if (checkPaymentValidity(paymentData)) {
-                const widget = new cp.CloudPayments();
-                widget.pay('charge', paymentData, {
-                    onSuccess: function (options) {
-                        tg.close();
-                    },
-                    onFail: function (reason, options) {
-                        showError(reason || 'Ошибка оплаты');
-                    },
-                    onComplete: function (paymentResult, options) {
-                        if (paymentResult.success) {
-                            tg.close();
-                        }
-                    }
-                });
-            }
-        } catch (e) {
-            showError(e.message);
+        if (data) {
+            // Если есть параметр data, перенаправляем на страницу оплаты
+            window.location.href = `payment.html?data=${data}`;
+        } else {
+            // Если параметра нет, перенаправляем на страницу с ошибкой
+            window.location.href = 'expired.html';
         }
     </script>
+</head>
+<body>
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+        <p>Перенаправление...</p>
+    </div>
 </body>
 </html>
